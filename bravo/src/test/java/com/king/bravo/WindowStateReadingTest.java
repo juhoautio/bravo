@@ -9,6 +9,7 @@ import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.MapTypeInfo;
+import org.apache.flink.runtime.state.OperatorStateBackend;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.junit.Test;
@@ -17,6 +18,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.flink.api.java.ExecutionEnvironment.createLocalEnvironment;
@@ -36,6 +38,19 @@ public class WindowStateReadingTest extends BravoTestPipeline {
         runTestPipeline(this::constructTestPipeline);
         OperatorStateReader reader = new OperatorStateReader(createLocalEnvironment(), getLastCheckpoint(),
                 REDUCER_UID);
+
+        // TODO if this is too heavy maybe try to read each index separately, 0..N:
+        // reader.createOperatorStateBackendFromSnapshot(0);
+
+        Map<Integer, OperatorStateBackend> backends = reader.createOperatorStateBackendsFromSnapshot();
+        for (Map.Entry<Integer, OperatorStateBackend> entry : backends.entrySet()) {
+            Integer index = entry.getKey();
+            OperatorStateBackend backend = entry.getValue();
+            Set<String> names = backend.getRegisteredStateNames();
+            Set<String> broadcastNames = backend.getRegisteredBroadcastStateNames();
+            System.out.println(String.format("index = %s, names = %s, broadcastNames = %s", index, names, broadcastNames));
+        }
+
         assertReadWindowStateValues(reader);
         assertReadWindowStateKVPairs(reader);
     }

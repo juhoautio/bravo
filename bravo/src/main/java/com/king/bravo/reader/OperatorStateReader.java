@@ -17,14 +17,10 @@
  */
 package com.king.bravo.reader;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
+import com.king.bravo.reader.inputformat.RocksDBKeyedStateInputFormat;
+import com.king.bravo.types.KeyedStateRow;
+import com.king.bravo.utils.StateMetadataUtils;
+import com.king.bravo.writer.OperatorStateWriter;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.state.ListState;
@@ -37,15 +33,20 @@ import org.apache.flink.runtime.checkpoint.OperatorState;
 import org.apache.flink.runtime.checkpoint.StateObjectCollection;
 import org.apache.flink.runtime.checkpoint.savepoint.Savepoint;
 import org.apache.flink.runtime.state.DefaultOperatorStateBackend;
+import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyedBackendSerializationProxy;
+import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.OperatorStateBackend;
 import org.apache.flink.runtime.state.OperatorStateHandle;
 import org.apache.flink.shaded.curator.org.apache.curator.shaded.com.google.common.collect.Maps;
 
-import com.king.bravo.reader.inputformat.RocksDBKeyedStateInputFormat;
-import com.king.bravo.types.KeyedStateRow;
-import com.king.bravo.utils.StateMetadataUtils;
-import com.king.bravo.writer.OperatorStateWriter;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Utility for reading the states stored in a Flink operator into DataSets.
@@ -192,6 +193,12 @@ public class OperatorStateReader {
 		return Maps.transformValues(opState.getSubtaskStates(),
 				sst -> {
 					try {
+					    // TODO gyula said I should try this instead of getManagedOperatorState():
+                        StateObjectCollection<KeyedStateHandle> rawKeyedState = sst.getRawKeyedState();
+                        for (KeyedStateHandle keyedStateHandle : rawKeyedState) {
+                            KeyGroupRange range = keyedStateHandle.getKeyGroupRange();
+
+                        }
 						return restoreOperatorStateBackend(sst.getManagedOperatorState());
 					} catch (Exception e) {
 						throw new RuntimeException(e);
